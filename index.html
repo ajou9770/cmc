@@ -187,8 +187,29 @@ window.addEventListener('load', function() {
         document.getElementById("close").style.display='block';
         document.getElementById("docu").style.display='block';
         document.getElementById("cancel").style.display='block';
-        window.scrollTo(0, document.body.scrollHeight);   
-      }
+        smoothScrollToBottom(1000); // 1초 동안 천천히 스크롤 내리기
+        }
+        
+        function smoothScrollToBottom(duration) {
+            var start = window.scrollY || window.pageYOffset;
+            var distance = document.body.scrollHeight - start;
+            var startTime = Date.now();
+        
+            function animate() {
+                var elapsed = Date.now() - startTime;
+                var progress = elapsed / duration; // 0 to 1
+                var ease = progress < 0.5 ? 2 * progress * progress : (4 - 2 * progress) * progress - 1; // ease in out
+        
+                if (progress < 1) {
+                    window.scrollTo(0, start + distance * ease);
+                    requestAnimationFrame(animate);
+                } else {
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            }
+        
+            animate();
+        }  
       function closedocu() {
         document.getElementById("open").style.display='block';
         document.getElementById("close").style.display='none';
