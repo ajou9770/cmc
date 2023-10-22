@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>휴가신청서</title>
+    <!-- Bootstrap CSS 추가 -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2>휴가신청서</h2>
+    <form id="vacationForm">
+        <div class="form-group">
+            <label for="employeeId">🤷‍♂️사번입력 후 이름을 조회하세요</label>
+            <input type="text" class="form-control" id="employeeId" placeholder="사번을 입력하세요" name="employeeId" required>
+            <button id="searchName" class="btn btn-secondary mt-2">🔎이름 조회하기</button>
+        </div>
+        <div class="form-group">
+            <label for="name">✔조회결과 이름을 아래에서 확인하세요</label>
+            <input type="text" class="form-control" id="name" name="name" disabled>
+        </div>
+        <div class="form-group">
+            <label>✨휴가신청일:</label>
+            <div id="dateContainer">
+                <div class="date-input-group mb-2">
+                    <input type="date" class="form-control" name="vacationDate" required>
+                    <button class="btn btn-secondary btn-sm ml-2 remove-date">❌삭제</button>
+                </div>
+            </div>
+            <button id="addDate" class="btn btn-info mt-2">🚀휴가일정 추가</button>
+        </div>
+        <div class="form-group">
+            <label for="notes">💬기타참고사항:</label>
+            <textarea class="form-control" id="notes" name="notes"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">🚀휴가신청서 제출하기</button>
+    </form>
+</div>
+
+<!-- Bootstrap JS, Popper.js, and jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+  document.getElementById('searchName').addEventListener('click', function(e) {
+    e.preventDefault(); // 버튼 클릭 시 폼 제출 방지
+    var employeeId = document.getElementById('employeeId').value;
+    
+    google.script.run.withSuccessHandler(function(name) {
+      var nameInput = document.getElementById('name');
+      if (name) {
+        nameInput.value = name;
+      } else {
+        nameInput.value = "🤷‍♂️입력되지 않았거나 일치하는 이름 없습니다. 사번을 확인해 주세요.";
+      }
+    }).getNameByEmployeeId(employeeId);
+  });
+
+  document.getElementById('addDate').addEventListener('click', function(e) {
+    e.preventDefault(); // 버튼 클릭 시 폼 제출 방지
+
+    var dateInputGroup = document.createElement('div');
+    dateInputGroup.className = 'date-input-group mb-2';
+
+    var dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.className = 'form-control';
+    dateInput.name = 'vacationDate';
+    dateInputGroup.appendChild(dateInput);
+
+    var removeButton = document.createElement('button');
+    removeButton.className = 'btn btn-secondary btn-sm ml-2 remove-date';
+    removeButton.textContent = '❌삭제';
+    removeButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      dateInputGroup.remove();
+    });
+    dateInputGroup.appendChild(removeButton);
+
+    document.getElementById('dateContainer').appendChild(dateInputGroup);
+  });
+
+  // 초기 제거 버튼 이벤트 설정
+  document.querySelectorAll('.remove-date').forEach(function(button) {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      button.parentElement.remove();
+    });
+  });
+
+  // 휴가신청서 제출 시
+  document.getElementById('vacationForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // 폼 제출 방지
+
+    var employeeId = document.getElementById('employeeId').value;
+    var dateInputs = document.querySelectorAll('input[name="vacationDate"]');
+    var dates = [];
+
+    dateInputs.forEach(function(input) {
+      if (input.value) {
+        dates.push(input.value);
+      }
+    });
+    // 필수 항목 확인
+  if (!employeeId || dates.length === 0) {
+    alert("사번 및 휴가일정은 필수 항목입니다.");
+    return;
+  }
+    // 휴가 신청 가능 여부 확인 중임을 알리는 alert
+    alert("🤷‍♂️해당일에 휴가신청가능여부를 확인중입니다, 잠시만 기다려 주세요."); 
+    google.script.run.withSuccessHandler(function(overLimitDate) {
+      if (overLimitDate) {
+        alert(overLimitDate + "에는 더이상 신청하실 수 없습니다(7개신청완료). 다른날짜를 선택해 주세요");
+      } else {
+        google.script.run.saveVacationDates(employeeId, dates);
+        // 휴가 신청서가 정상 제출되었음을 알리는 alert
+       alert("휴가신청서가 정상 제출되었습니다.");
+      }
+    }).checkDateLimit(employeeId, dates);
+  });
+</script>
+
+</body>
+</html>
+
+
+----------------------------------------
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getNameByEmployeeId(employeeId) {
+  var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
+  var data = sheet.getDataRange().getValues();
+  
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] == employeeId) {
+      return data[i][1]; // 사번에 해당하는 이름 반환
+    }
+  }
+  return null; // 일치하는 사번이 없을 경우 null 반환
+}
+
+function saveVacationDates(employeeId, dates) {
+  var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
+  var data = sheet.getDataRange().getValues();
+  
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] == employeeId) {
+      var existingDates = data[i].slice(2); // 기존에 저장된 날짜들
+      var combinedDates = existingDates.concat(dates).filter(Boolean); // 기존 날짜와 새로운 날짜를 합침
+      for (var j = 0; j < combinedDates.length; j++) {
+        sheet.getRange(i + 1, 3 + j).setValue(combinedDates[j]); // 날짜 저장
+      }
+      break;
+    }
+  }
+}
+
+/* function checkDateLimit(employeeId, dates) {
+  var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
+  var data = sheet.getRange(2, 3, sheet.getLastRow() - 1, sheet.getLastColumn() - 2).getValues();
+  
+  var dateCount = {};
+
+  // 기존에 저장된 날짜들을 카운트
+  for (var i = 0; i < data.length; i++) {
+    for (var j = 0; j < data[i].length; j++) {
+      var date = data[i][j];
+      if (date) {
+        dateCount[date] = (dateCount[date] || 0) + 1;
+      }
+    }
+  }
+
+  // 사용자가 신청하려는 날짜들을 카운트
+  for (var i = 0; i < dates.length; i++) {
+    dateCount[dates[i]] = (dateCount[dates[i]] || 0) + 1;
+    if (dateCount[dates[i]] > 7) {
+      return dates[i]; // 7개를 초과하는 날짜 반환
+    }
+  }
+
+  return null; // 모든 날짜가 제한 내에 있을 경우 null 반환
+} */
+
+function checkDateLimit(employeeId, dates) {
+  var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
+  var data = sheet.getRange("C2:M51").getValues();
+  
+  var dateCount = {};
+
+  // 기존에 저장된 날짜들을 카운트
+  for (var i = 0; i < data.length; i++) {
+    for (var j = 0; j < data[i].length; j++) {
+      var date = data[i][j];
+      if (date && date instanceof Date) { // 날짜 객체인지 확인
+        var formattedDate = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+        dateCount[formattedDate] = (dateCount[formattedDate] || 0) + 1;
+      }
+    }
+  }
+
+  Logger.log(dateCount); // 로깅 추가
+
+  // 사용자가 신청하려는 날짜들을 카운트
+  for (var i = 0; i < dates.length; i++) {
+    dateCount[dates[i]] = (dateCount[dates[i]] || 0) + 1;
+    if (dateCount[dates[i]] > 7) {
+      return dates[i]; // 7개를 초과하는 날짜 반환
+    }
+  }
+
+  return null; // 모든 날짜가 제한 내에 있을 경우 null 반환
+}
+
+
+
+
+
