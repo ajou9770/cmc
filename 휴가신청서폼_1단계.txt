@@ -8,15 +8,17 @@
 <body>
 
 <div class="container mt-5">
-    <h2>휴가신청서</h2>
+    <h4>휴가신청서 작성하기</h4>
+    <small>#신청순서: 사번입력확인 > 이름확인 > 휴가일정입력(추가) > 제출하기</small>
+    <hr>
     <form id="vacationForm">
         <div class="form-group">
-            <label for="employeeId">🤷‍♂️사번입력 후 이름을 조회하세요</label>
-            <input type="text" class="form-control" id="employeeId" placeholder="사번을 입력하세요" name="employeeId" required>
-            <button id="searchName" class="btn btn-secondary mt-2">🔎이름 조회하기</button>
+            <label for="employeeId">🤷‍♂️사번입력 후 확인바랍니다</label>
+            <input type="number" class="form-control" id="employeeId" placeholder="사번을 입력하세요" name="employeeId" required>
+            <button id="searchName" class="btn btn-secondary mt-2">✔확인</button>
         </div>
         <div class="form-group">
-            <label for="name">✔조회결과 이름을 아래에서 확인하세요</label>
+            <label for="name">✔사번이 확인되면 아래 이름이 입력 됩니다</label>
             <input type="text" class="form-control" id="name" name="name" disabled>
         </div>
         <div class="form-group">
@@ -27,15 +29,62 @@
                     <button class="btn btn-secondary btn-sm ml-2 remove-date">❌삭제</button>
                 </div>
             </div>
-            <button id="addDate" class="btn btn-info mt-2">🚀휴가일정 추가</button>
+            <button id="addDate" class="btn btn-info btn-sm">➕추가</button>
         </div>
         <div class="form-group">
             <label for="notes">💬기타참고사항:</label>
             <textarea class="form-control" id="notes" name="notes"></textarea>
         </div>
-        <button type="submit" class="btn btn-primary">🚀휴가신청서 제출하기</button>
+        <button type="submit" class="btn btn-primary btn-block">🚀제출하기</button>
     </form>
-</div>
+   </div>
+<div class="container mt-5">
+      <h5 class="mb-3">🔎휴가 신청내역 조회하기</h5>
+      <!-- <div class="input-group mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">사번:</span>
+        </div>
+        <input type="text" class="form-control" id="employeeId"> -->
+        <div class="input-group-append">
+          <button class="btn btn-primary" onclick="searchRequests()">🔎조회 하기</button>
+        </div>
+      </div>
+      <ul id="results" class="list-group" style="margin:10px;"></ul>
+    </div>
+    <script>
+  function searchRequests() {
+    var employeeId = document.getElementById('employeeId').value;
+    if (employeeId.length === 0) {
+    alert("🤷‍♂️상단에 사번을 입력후 조회하세요");
+    return;
+  }
+    google.script.run.withSuccessHandler(displayResults).getVacationRequests(employeeId);
+    alert("🤷‍♂️신청내역 (재)조회중입니다. 잠시만 기다려 주세요");
+  }
+
+  function displayResults(requests) {
+  var results = document.getElementById('results');
+  results.innerHTML = '';
+
+  
+  if (requests.length === 0) {
+    var li = document.createElement('li');
+    li.textContent = "🤷‍♂️현재, 신청내역이 조회 되지 않습니다";
+    li.className = 'list-group-item';
+    results.appendChild(li);
+    window.scrollTo(0, document.body.scrollHeight);
+  } else {
+    for (var i = 0; i < requests.length; i++) {
+      var li = document.createElement('li');
+      li.textContent = requests[i];
+      li.className = 'list-group-item';
+      results.appendChild(li);
+    }
+    // 스크롤바를 맨 아래로 이동
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+}
+</script>
 
 <!-- Bootstrap JS, Popper.js, and jQuery -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -110,22 +159,26 @@
     // 휴가 신청 가능 여부 확인 중임을 알리는 alert
     alert("🤷‍♂️해당일에 휴가신청가능여부를 확인중입니다, 잠시만 기다려 주세요."); 
     google.script.run.withSuccessHandler(function(overLimitDate) {
+    var employeeIdValue = document.getElementById('employeeId').value;  
       if (overLimitDate) {
         alert(overLimitDate + "에는 더이상 신청하실 수 없습니다(7개신청완료). 다른날짜를 선택해 주세요");
       } else {
         google.script.run.saveVacationDates(employeeId, dates);
         // 휴가 신청서가 정상 제출되었음을 알리는 alert
        alert("휴가신청서가 정상 제출되었습니다.");
+       e.target.reset();
+        // 사번 값을 다시 설정
+       document.getElementById('employeeId').value = employeeIdValue;
       }
     }).checkDateLimit(employeeId, dates);
   });
 </script>
-
 </body>
 </html>
 
 
-----------------------------------------
+---------
+
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -161,33 +214,6 @@ function saveVacationDates(employeeId, dates) {
   }
 }
 
-/* function checkDateLimit(employeeId, dates) {
-  var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
-  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
-  var data = sheet.getRange(2, 3, sheet.getLastRow() - 1, sheet.getLastColumn() - 2).getValues();
-  
-  var dateCount = {};
-
-  // 기존에 저장된 날짜들을 카운트
-  for (var i = 0; i < data.length; i++) {
-    for (var j = 0; j < data[i].length; j++) {
-      var date = data[i][j];
-      if (date) {
-        dateCount[date] = (dateCount[date] || 0) + 1;
-      }
-    }
-  }
-
-  // 사용자가 신청하려는 날짜들을 카운트
-  for (var i = 0; i < dates.length; i++) {
-    dateCount[dates[i]] = (dateCount[dates[i]] || 0) + 1;
-    if (dateCount[dates[i]] > 7) {
-      return dates[i]; // 7개를 초과하는 날짜 반환
-    }
-  }
-
-  return null; // 모든 날짜가 제한 내에 있을 경우 null 반환
-} */
 
 function checkDateLimit(employeeId, dates) {
   var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
@@ -220,7 +246,34 @@ function checkDateLimit(employeeId, dates) {
   return null; // 모든 날짜가 제한 내에 있을 경우 null 반환
 }
 
-
-
+function getVacationRequests(employeeId) {
+  var ss = SpreadsheetApp.openById("1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA");
+  var sheet = ss.getSheetByName("member");
+  var range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
+  var values = range.getValues();
+  
+  for (var i = 0; i < values.length; i++) {
+    if (values[i][0] == employeeId) {
+      var requests = [];
+      for (var j = 2; j < values[i].length; j++) {
+        if (values[i][j]) {
+          // 날짜 값을 문자열로 변환
+          var dateValue = values[i][j];
+          if (dateValue instanceof Date) {
+            var yyyy = dateValue.getFullYear();
+            var mm = String(dateValue.getMonth() + 1).padStart(2, '0'); // January is 0!
+            var dd = String(dateValue.getDate()).padStart(2, '0');
+            var formattedDate = yyyy + '-' + mm + '-' + dd;
+            requests.push(formattedDate);
+          } else {
+            requests.push(values[i][j]);
+          }
+        }
+      }
+      return requests;
+    }
+  }
+  return [];
+}
 
 
