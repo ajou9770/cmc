@@ -4,11 +4,20 @@
     <title>휴가신청서</title>
     <!-- Bootstrap CSS 추가 -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<style>
+#name {
+  font-weight: 600;
+}
+#searchclose {
+  display: none;
+  margin-left: 10px;
+}
+  </style>
 </head>
 <body>
 
 <div class="container mt-5">
-    <h4>휴가신청서 작성하기</h4>
+    <h4>✨휴가신청서 작성 및 제출</h4>
     <small>#신청순서: 사번입력확인 > 이름확인 > 휴가일정입력(추가) > 제출하기</small>
     <hr>
     <form id="vacationForm">
@@ -18,11 +27,11 @@
             <button id="searchName" class="btn btn-secondary mt-2">✔확인</button>
         </div>
         <div class="form-group">
-            <label for="name">✔사번이 확인되면 아래 이름이 입력 됩니다</label>
+            <label for="name">✔사번이 확인되면 아래 이름이 입력 됩니다.</label>
             <input type="text" class="form-control" id="name" name="name" disabled>
         </div>
-        <div class="form-group">
-            <label>✨휴가신청일:</label>
+            <div class="form-group">
+            <label>📆휴가신청일:</label>
             <div id="dateContainer">
                 <div class="date-input-group mb-2">
                     <input type="date" class="form-control" name="vacationDate" required>
@@ -39,51 +48,91 @@
     </form>
    </div>
 <div class="container mt-5">
-      <h5 class="mb-3">🔎휴가 신청내역 조회하기</h5>
-      <!-- <div class="input-group mb-3">
-        <div class="input-group-prepend">
-          <span class="input-group-text">사번:</span>
-        </div>
-        <input type="text" class="form-control" id="employeeId"> -->
         <div class="input-group-append">
-          <button class="btn btn-primary" onclick="searchRequests()">🔎조회 하기</button>
+          <button id="searchvac" class="btn btn-primary" onclick="searchRequests()">🔎휴가 신청내역 조회하기</button>
         </div>
       </div>
+      <button id="searchclose" class="btn btn-danger btn-sm" onclick="searchClose()">📝휴가신청내역확인및취소 / 닫기</button>
       <ul id="results" class="list-group" style="margin:10px;"></ul>
     </div>
     <script>
   function searchRequests() {
     var employeeId = document.getElementById('employeeId').value;
     if (employeeId.length === 0) {
-    alert("🤷‍♂️상단에 사번을 입력후 조회하세요");
-    return;
-  }
+        alert("🤷‍♂️상단에 사번을 입력후 조회하세요");
+        return;
+    }
     google.script.run.withSuccessHandler(displayResults).getVacationRequests(employeeId);
     alert("🤷‍♂️신청내역 (재)조회중입니다. 잠시만 기다려 주세요");
-  }
+    document.getElementById("searchvac").style.display = 'none';
+    document.getElementById("searchclose").style.display = 'block';
+    document.getElementById("results").style.display = 'block';
+}
 
-  function displayResults(requests) {
+function searchClose() {
+    document.getElementById("searchvac").style.display = 'block';
+    document.getElementById("searchclose").style.display = 'none';
+    document.getElementById("results").style.display = 'none';
+}
+
+function displayResults(requests) {
   var results = document.getElementById('results');
   results.innerHTML = '';
-
+  requests.sort(); 
   
   if (requests.length === 0) {
     var li = document.createElement('li');
     li.textContent = "🤷‍♂️현재, 신청내역이 조회 되지 않습니다";
     li.className = 'list-group-item';
     results.appendChild(li);
-    window.scrollTo(0, document.body.scrollHeight);
   } else {
     for (var i = 0; i < requests.length; i++) {
       var li = document.createElement('li');
       li.textContent = requests[i];
       li.className = 'list-group-item';
+
+      // 스크롤바를 맨 아래로 이동
+      window.scrollTo(0, document.body.scrollHeight);
+
+      // 삭제 버튼 추가
+      var deleteButton = document.createElement('button');
+      deleteButton.textContent = "취소";
+      deleteButton.className = 'btn btn-danger btn-sm';
+      deleteButton.onclick = function(dateToDelete) {
+        return function() {
+          deleteDate(dateToDelete);
+        };
+      }(requests[i]);
+      li.appendChild(deleteButton);
+
       results.appendChild(li);
     }
-    // 스크롤바를 맨 아래로 이동
-    window.scrollTo(0, document.body.scrollHeight);
   }
 }
+function deleteDate(dateToDelete) {
+  var employeeId = document.getElementById('employeeId').value;
+
+  // 사용자에게 삭제를 확인하도록 요청
+  var isConfirmed = confirm("다음 날짜를 삭제 하시겠습니까? " + dateToDelete);
+  
+  if (isConfirmed) {
+    alert("🤷‍♂️삭제 처리중입니다. 잠시만 기다려 주세요..")
+    google.script.run.withSuccessHandler(function() {
+      // 삭제 성공 후 alert 창 표시
+      alert("선택하신 날짜는 취소(삭제) 되었습니다. 이창을 닫은 후 다시조회후 확인해 주세요");
+
+      // 모든 일치하는 리스트 항목 감추기
+      var results = document.getElementById('results').children;
+      for (var i = 0; i < results.length; i++) {
+        if (results[i].textContent.includes(dateToDelete)) {
+          results[i].style.display = 'none';
+        }
+      }
+    }).deleteVacationDate(employeeId, dateToDelete);
+  }
+}
+
+
 </script>
 
 <!-- Bootstrap JS, Popper.js, and jQuery -->
@@ -95,13 +144,14 @@
   document.getElementById('searchName').addEventListener('click', function(e) {
     e.preventDefault(); // 버튼 클릭 시 폼 제출 방지
     var employeeId = document.getElementById('employeeId').value;
+    alert(`입력하신 사번 [${employeeId}]으로 이름을 조회중입니다. 잠시만 기다려 주세요`);
     
     google.script.run.withSuccessHandler(function(name) {
       var nameInput = document.getElementById('name');
       if (name) {
         nameInput.value = name;
       } else {
-        nameInput.value = "🤷‍♂️입력되지 않았거나 일치하는 이름 없습니다. 사번을 확인해 주세요.";
+        nameInput.value = "🤷‍♂️입력되지 않았거나 일치하는 이름이 없습니다. 사번을 확인해 주세요.";
       }
     }).getNameByEmployeeId(employeeId);
   });
@@ -176,7 +226,6 @@
 </body>
 </html>
 
-
 ---------
 
 function doGet() {
@@ -218,7 +267,7 @@ function saveVacationDates(employeeId, dates) {
 function checkDateLimit(employeeId, dates) {
   var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
   var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
-  var data = sheet.getRange("C2:M51").getValues();
+  var data = sheet.getRange("C2:P51").getValues();
   
   var dateCount = {};
 
@@ -275,5 +324,39 @@ function getVacationRequests(employeeId) {
   }
   return [];
 }
+
+// 휴가신청 삭제 함수 추가
+
+function formatDate(date) {
+  if (date instanceof Date) {
+    var yyyy = date.getFullYear();
+    var mm = String(date.getMonth() + 1).padStart(2, '0'); // January is 0!
+    var dd = String(date.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+  } else {
+    return date; // 이미 문자열 형식인 경우 그대로 반환
+  }
+}
+
+function deleteVacationDate(employeeId, dateToDelete) {
+  var sheetId = "1R3pNd1l5EJmE0yW7cwUZAeBJkrC-XZHbX9KkCkXJ2gA";
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('member');
+  var data = sheet.getDataRange().getValues();
+  
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] == employeeId) {
+      for (var j = 2; j < data[i].length; j++) {
+        var formattedDate = formatDate(data[i][j]);
+        if (formattedDate == dateToDelete) {
+          sheet.getRange(i + 1, j + 1).setValue(""); // 날짜 삭제
+          break;
+        }
+      }
+      break;
+    }
+  }
+}
+
+
 
 
