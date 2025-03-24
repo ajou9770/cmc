@@ -10,7 +10,7 @@
     <div class="container py-5">
       <div class="card shadow rounded-4">
         <div class="card-body">
-          <h4 class="card-title text-center mb-4">| 응급실 4월 보수교육 입력 |</h4>
+          <h4 class="card-title text-center mb-4">| 응급간호팀 4월 보수교육 입력 |</h4>
 
           <form id="searchForm" class="mb-4">
             <div class="mb-3">
@@ -74,7 +74,7 @@
         e.preventDefault();
         const name = document.getElementById("name").value.trim();
         const searchBtn = searchForm.querySelector("button[type='submit']");
-        
+
         searchBtn.disabled = true;
         const originalText = searchBtn.textContent;
         searchBtn.textContent = "🔄조회중.. 잠시 기다려주세요";
