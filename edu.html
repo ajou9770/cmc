@@ -73,7 +73,12 @@
       searchForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const name = document.getElementById("name").value.trim();
-        alert('🤷‍♂️조회중입니다. 잠시 기다려 주세요');
+        const searchBtn = searchForm.querySelector("button[type='submit']");
+        
+        searchBtn.disabled = true;
+        const originalText = searchBtn.textContent;
+        searchBtn.textContent = "🔄조회중.. 잠시 기다려주세요";
+
         try {
           const response = await fetch(`${SHEET_URL}?name=${name}`, {
             method: "GET",
@@ -84,6 +89,8 @@
             eduDate.value = data.eduDate;
             resultArea.classList.remove("d-none");
             message.textContent = "";
+            searchBtn.disabled = false;
+            searchBtn.textContent = "🔎조회 하기";
           } else {
             resultArea.classList.add("d-none");
             message.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
@@ -102,7 +109,11 @@
           alert("보수교육 제목을 입력하세요.");
           return;
         }
-        alert('🚀제출중입니다. 제출결과를 확인하세요');
+
+        submitBtn.disabled = true;
+        const originalSubmitText = submitBtn.textContent;
+        submitBtn.textContent = "🔄제출중.. 잠시 기다려 주세요";
+       
         try {
           const formData = new FormData();
           formData.append("name", name);
@@ -124,7 +135,10 @@
         } catch (error) {
           console.error(error);
           message.innerHTML = `<div class="alert alert-danger">제출 실패. 다시 시도해주세요.</div>`;
-        }
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalSubmitText;
+          }
       });
     </script>
   </body>
